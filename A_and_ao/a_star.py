@@ -48,7 +48,15 @@ class AStarSearch:
                 path_str, cost_str = res_str.split(":")
                 
                 # Convert string representation to Python objects
-                path = ast.literal_eval(path_str)
+                # Prolog returns [rock_beach, white_town] (unquoted atoms)
+                # We manually parse this to avoid ast.literal_eval errors on unquoted names
+                clean_path = path_str.strip().strip("[]")
+                if clean_path:
+                    # Split by comma, strip whitespace and potential quotes
+                    path = [x.strip().strip("'").strip('"') for x in clean_path.split(",")]
+                else:
+                    path = []
+                
                 cost = float(cost_str)
                 return path, cost
             else:
