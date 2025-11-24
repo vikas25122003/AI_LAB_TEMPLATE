@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RL Recommendation System</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
+        select, button { padding: 10px; font-size: 16px; margin: 10px; }
+        .result { margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; }
+        .feedback-btn { cursor: pointer; margin: 0 10px; }
+        .like { background-color: #28a745; color: white; border: none; }
+        .dislike { background-color: #dc3545; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <h1>AI Recommendation Agent (Q-Learning)</h1>
+    <p>Select a user profile to get a recommendation.</p>
+    
+    <form method="POST" action="/">
+        <label for="context">User Profile:</label>
+        <select name="context" required>
+            {% for state in states %}
+                <option value="{{ state }}" {% if context == state %}selected{% endif %}>{{ state }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <button type="submit">Get Recommendation</button>
+    </form>
+
+    {% if recommendation %}
+    <div class="result">
+        <h2>Recommended: <strong>{{ recommendation }}</strong></h2>
+        <p>Do you like this recommendation?</p>
+        
+        <button class="feedback-btn like" onclick="sendFeedback('like')">👍 Like (+10)</button>
+        <button class="feedback-btn dislike" onclick="sendFeedback('dislike')">👎 Dislike (-10)</button>
+        
+        <p id="msg" style="color: gray; font-size: 0.9em; margin-top: 10px;"></p>
+    </div>
+
+    <script>
+        function sendFeedback(type) {
+            const context = "{{ context }}";
+            const action = "{{ recommendation }}";
+            
+            fetch('/feedback', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    context: context,
+                    action: action,
+                    feedback: type
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('msg').innerText = "Feedback received! Model updated. New Q-Value: " + data.new_q_value.toFixed(2);
+            });
+        }
+    </script>
+    {% endif %}
+</body>
+</html>

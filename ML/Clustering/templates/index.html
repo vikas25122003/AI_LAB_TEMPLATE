@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clustering Demo</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; }
+        button { padding: 10px 20px; background-color: #17a2b8; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; background-color: #e9ecef; }
+    </style>
+</head>
+<body>
+    <h1>Clustering Predictor</h1>
+    
+    <form method="POST" action="/">
+        <div class="form-group">
+            <label>Feature 1:</label>
+            <input type="number" step="any" name="feature_1" required>
+        </div>
+        <div class="form-group">
+            <label>Feature 2:</label>
+            <input type="number" step="any" name="feature_2" required>
+        </div>
+        <div class="form-group">
+            <label>Category (Type_X, Type_Y):</label>
+            <input type="text" name="category" required>
+        </div>
+
+        <button type="submit">Find Cluster</button>
+    </form>
+
+    {% if prediction is not none %}
+    <div class="result">
+        <h2>{{ prediction }}</h2>
+    </div>
+    {% endif %}
+</body>
+</html>

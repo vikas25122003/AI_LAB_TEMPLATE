@@ -1,0 +1,63 @@
+# ==================================================================================
+# PROLOG PROMPT TEMPLATE FOR OLLAMA (Gemma/Llama)
+# ==================================================================================
+# Copy the text below and paste it into your LLM chat interface.
+# Replace the [BRACKETED SECTIONS] with the specific details from your exam question.
+# ==================================================================================
+
+You are an expert AI programmer specializing in Prolog. I have a problem statement for a lab experiment involving search and logic. 
+
+Your task is to write a complete, syntactically correct Prolog Knowledge Base (.pl) based on the scenario below.
+
+### SCENARIO DESCRIPTION:
+[PASTE THE FULL QUESTION TEXT HERE]
+(e.g., "Develop an AI system for a racing game set on the Pondy coastal circuit...")
+
+### REQUIREMENTS:
+
+1. **Facts Generation**:
+   - Extract all locations mentioned in the scenario.
+   - Create `edge(Start, End, Cost)` or `edge(Start, End, Distance, Risk)` predicates to represent the connections. 
+   - If specific distances aren't given, invent reasonable integer values.
+   - Create property facts like `is_safe(Location)` or `terrain(Location, Type)` if the problem mentions them.
+
+2. **Recursive Pathfinding**:
+   - Write a recursive rule `path(Start, End, Path, TotalCost)` to find a route between two nodes.
+   - **Crucial**: You MUST handle cycles. Use a `Visited` list to prevent infinite loops.
+   - Logic: `path(Current, Goal, Visited, Path, Cost)`
+
+3. **Backtracking Implementation**:
+   - Write a predicate `print_all_paths(Start, End)` that finds a path, prints it, and then uses the `fail` predicate to force Prolog to backtrack and find the next path.
+
+4. **Comparison Analysis (Text Output)**:
+   - Briefly explain how this Prolog approach (Depth First Search/Backtracking) differs from A* Search (Heuristic) and Reinforcement Learning (Trial & Error) for this specific problem.
+
+### OUTPUT FORMAT:
+Please provide the response in two parts:
+1. A code block containing the full `kb.pl` file.
+2. A short paragraph for the comparison analysis.
+
+### EXAMPLE PROLOG STRUCTURE (Follow this pattern):
+```prolog
+% Facts
+connected(a, b, 5).
+connected(b, c, 10).
+
+% Recursive Rule with Cycle Prevention
+route(Start, End, Path, Cost) :-
+    travel(Start, End, [Start], Path, Cost).
+
+travel(Node, Node, _, [Node], 0).
+travel(Start, End, Visited, [Start|RestPath], TotalCost) :-
+    connected(Start, Next, Dist),
+    \+ member(Next, Visited), % Prevent cycles
+    travel(Next, End, [Next|Visited], RestPath, RestCost),
+    TotalCost is Dist + RestCost.
+
+% Backtracking to print all
+show_all(Start, End) :-
+    route(Start, End, P, C),
+    write('Path: '), write(P), write(', Cost: '), write(C), nl,
+    fail.
+show_all(_, _).
+```

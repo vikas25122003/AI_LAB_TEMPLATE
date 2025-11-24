@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prolog Knowledge Base</title>
+    <style>
+        body { font-family: monospace; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input[type="text"] { width: 70%; padding: 10px; font-family: monospace; }
+        button { padding: 10px 20px; cursor: pointer; background-color: #5f27cd; color: white; border: none; }
+        button:hover { background-color: #401896; }
+        #results { margin-top: 20px; padding: 10px; background: #2d3436; color: #00cec9; min-height: 100px; white-space: pre-wrap; }
+        .section { margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px; }
+        h2 { color: #2d3436; }
+    </style>
+</head>
+<body>
+    <h1>Prolog Knowledge Base Interface</h1>
+    
+    <div class="container">
+        <!-- Query Section -->
+        <div class="section">
+            <h2>1. Query KB</h2>
+            <p>Try queries like: <code>mortal(X)</code>, <code>ancestor(john, Y)</code>, <code>factorial(5, N)</code></p>
+            <input type="text" id="queryInput" placeholder="Enter Prolog Query..." value="ancestor(john, X)">
+            <button onclick="runQuery()">Run Query</button>
+            
+            <div id="results">Results will appear here...</div>
+        </div>
+
+        <!-- Dynamic Facts Section -->
+        <div class="section">
+            <h2>2. Dynamic Predicates</h2>
+            <p>Add new facts at runtime. E.g., <code>friend(alice, bob)</code></p>
+            <input type="text" id="factInput" placeholder="Enter Fact..." value="friend(alice, bob)">
+            <button onclick="addFact()" style="background-color: #27ae60;">Add Fact</button>
+            <p id="factStatus"></p>
+        </div>
+
+        <!-- Examples Section -->
+        <div class="section">
+            <h2>3. Concept Examples (Reference)</h2>
+            <ul>
+                <li><strong>Facts:</strong> <code>parent(john, mary).</code></li>
+                <li><strong>Rules:</strong> <code>mortal(X) :- human(X).</code></li>
+                <li><strong>Negation:</strong> <code>bachelor(X) :- male(X), \+ married(X).</code></li>
+                <li><strong>Recursion:</strong> <code>ancestor(X, Y).</code></li>
+                <li><strong>Lists:</strong> <code>sum_list([1,2,3], Sum).</code></li>
+                <li><strong>Arithmetic:</strong> <code>circle_area(10, Area).</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function runQuery() {
+            const query = document.getElementById('queryInput').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerText = "Querying...";
+            
+            try {
+                const formData = new FormData();
+                formData.append('query', query);
+                
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerText = "Error: " + data.error;
+                } else {
+                    if (data.results.length === 0) {
+                        resultsDiv.innerText = "No solutions found (or true with no variables).";
+                    } else {
+                        resultsDiv.innerText = JSON.stringify(data.results, null, 2);
+                    }
+                }
+            } catch (e) {
+                resultsDiv.innerText = "Network Error: " + e;
+            }
+        }
+
+        async function addFact() {
+            const fact = document.getElementById('factInput').value;
+            const statusP = document.getElementById('factStatus');
+            
+            try {
+                const formData = new FormData();
+                formData.append('fact', fact);
+                
+                const response = await fetch('/add_fact', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    statusP.innerText = "Error: " + data.error;
+                    statusP.style.color = "red";
+                } else {
+                    statusP.innerText = data.message;
+                    statusP.style.color = "green";
+                }
+            } catch (e) {
+                statusP.innerText = "Network Error";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RL Q-Learning Visualization</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; }
+        .grid-container {
+            display: inline-grid;
+            grid-template-columns: repeat(var(--grid-cols), 60px);
+            gap: 5px;
+            margin-top: 20px;
+            background-color: #333;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #aaa;
+            border-radius: 3px;
+        }
+        .obstacle { background-color: #dc3545; color: white; font-weight: bold; }
+        .goal { background-color: #ffc107; color: black; font-weight: bold; }
+        .start { background-color: #28a745; color: white; }
+        
+        /* Agent Animation Class */
+        .agent {
+            background-color: #007bff !important;
+            color: white !important;
+            font-weight: bold;
+            border: 2px solid #0056b3;
+            transform: scale(1.1);
+            transition: all 0.3s ease;
+        }
+        
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Q-Learning GridWorld Agent</h1>
+    <p>Green: Start | Gold: Goal | Red: Obstacle | Blue: Agent</p>
+    
+    <div class="grid-container" style="--grid-cols: {{ grid_size }};">
+        {% for row in grid %}
+            {% for cell in row %}
+                <div id="cell-{{cell.r}}-{{cell.c}}" class="cell {{ cell.type }}">
+                    {{ cell.r }},{{ cell.c }}
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+
+    <br>
+    <button onclick="runSimulation()">Run Simulation</button>
+    <div id="status"></div>
+
+    <script>
+        async function runSimulation() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = "Loading path...";
+            
+            try {
+                const response = await fetch('/run_simulation');
+                const data = await response.json();
+                
+                if (data.error) {
+                    statusDiv.innerText = "Error: " + data.error;
+                    return;
+                }
+                
+                const path = data.path;
+                statusDiv.innerText = "Simulating...";
+                
+                // Reset grid (remove old agent classes)
+                document.querySelectorAll('.cell').forEach(el => el.classList.remove('agent'));
+
+                // Animate path
+                for (let i = 0; i < path.length; i++) {
+                    const [r, c] = path[i];
+                    const cell = document.getElementById(`cell-${r}-${c}`);
+                    
+                    // Remove agent from previous cell (if any)
+                    if (i > 0) {
+                        const [prevR, prevC] = path[i-1];
+                        document.getElementById(`cell-${prevR}-${prevC}`).classList.remove('agent');
+                    }
+                    
+                    cell.classList.add('agent');
+                    
+                    // Wait for 500ms
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                statusDiv.innerText = "Goal Reached!";
+                
+            } catch (e) {
+                statusDiv.innerText = "Error connecting to server.";
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
