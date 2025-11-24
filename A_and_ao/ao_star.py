@@ -1,74 +1,84 @@
+import subprocess
+import sys
+import ast
+import os
+
 class AOStarSearch:
     def __init__(self, graph, heuristics, start_node):
         self.graph = graph
         self.heuristics = heuristics
         self.start_node = start_node
-        self.solution_graph = {}
-
-    def compute_minimum_cost(self, v):
-        minimum_cost = float('inf')
-        cost_to_child_list = {}
-        
-        # Iterate over possible AND/OR branches
-        # graph[v] is a list of lists. Inner lists are AND conditions.
-        # e.g. [[A, B], [C]] means (A AND B) OR (C)
-        for path in self.graph.get(v, []):
-            path_cost = 0
-            node_list = []
-            for child_node, weight in path:
-                # Cost = Edge Weight + Heuristic of child (recursive update)
-                path_cost += weight + self.heuristics.get(child_node, 0)
-                node_list.append(child_node)
-            
-            if path_cost < minimum_cost:
-                minimum_cost = path_cost
-                cost_to_child_list[minimum_cost] = node_list
-                
-        return minimum_cost, cost_to_child_list
+        self.solution_graph = {} # Not used in Prolog version but kept for compatibility
+        self.min_cost = 0
+        self.solution_structure = ""
 
     def ao_star(self, v, backtracking):
-        # print(f"Processing Node: {v} | Current Heuristic: {self.heuristics[v]}")
+        # This method now acts as the bridge to Prolog
         
-        # Compute cost for current node based on children
-        min_cost, child_dict = self.compute_minimum_cost(v)
+        # 1. Generate Prolog Facts
+        prolog_code = ":- dynamic branch/2, h/2.\n"
         
-        # Update heuristic and solution graph
-        self.heuristics[v] = min_cost
+        # Convert AND-OR Graph to Prolog Facts
+        # Python: 'A': [[('B', 1), ('C', 1)], [('D', 1)]]
+        # Prolog: branch('A', ['B'-1, 'C'-1]). branch('A', ['D'-1]).
+        for node, or_branches in self.graph.items():
+            for and_branch in or_branches:
+                # and_branch is list of (Child, Cost)
+                children_str_list = []
+                for child, cost in and_branch:
+                    children_str_list.append(f"'{child}'-{cost}")
+                
+                children_prolog = "[" + ", ".join(children_str_list) + "]"
+                prolog_code += f"branch('{node}', {children_prolog}).\n"
         
-        if min_cost < float('inf'):
-            best_children = child_dict[min_cost]
-            self.solution_graph[v] = best_children
+        # Convert Heuristics
+        for node, h_val in self.heuristics.items():
+            prolog_code += f"h('{node}', {h_val}).\n"
             
-            if v != self.start_node:
-                backtracking = True 
-
-            # Recursive step: Expand best children
-            for child in best_children:
-                self.ao_star(child, backtracking)
+        # 2. Include Solver
+        solver_path = os.path.abspath("aostar_solver.pl").replace("\\", "/")
+        prolog_code += f":- consult('{solver_path}').\n"
+        prolog_code += f"run :- solve_aostar('{v}').\n"
+        
+        # 3. Write temp file
+        temp_file = "temp_aostar.pl"
+        with open(temp_file, "w") as f:
+            f.write(prolog_code)
+            
+        # 4. Run SWI-Prolog
+        try:
+            result = subprocess.run(
+                ["swipl", "-s", temp_file, "-g", "run", "-t", "halt"],
+                capture_output=True, text=True
+            )
+            
+            output = result.stdout
+            # Parse "RESULT:Cost:TreeString"
+            if "RESULT:" in output:
+                res_str = output.split("RESULT:")[1].strip()
+                # Split only on first colon to separate cost from tree
+                parts = res_str.split(":", 1)
+                if len(parts) == 2:
+                    self.min_cost = float(parts[0])
+                    self.solution_structure = parts[1]
+                    # Update heuristics for compatibility
+                    self.heuristics[v] = self.min_cost
+            else:
+                print("Prolog Output:", output)
+                print("Prolog Error:", result.stderr)
+                
+        except FileNotFoundError:
+            print("❌ Error: 'swipl' (SWI-Prolog) is not installed.")
+        except Exception as e:
+            print(f"Error running Prolog: {e}")
 
     def get_solution_structure(self, node, level=0):
-        """
-        Returns the solution tree structure as a list of strings for display.
-        """
-        output = []
-        indent = "  " * level
-        arrow = "-> " if level > 0 else ""
-        cost = self.heuristics.get(node, 0)
-        output.append(f"{indent}{arrow}{node} (Cost: {cost})")
-        
-        if node in self.solution_graph:
-            children = self.solution_graph[node]
-            for child in children:
-                output.extend(self.get_solution_structure(child, level + 1))
-        return output
+        # In Prolog version, we get the structure string directly
+        # We wrap it in a list to match the expected interface of app.py
+        return [str(self.solution_structure)]
 
     def print_solution(self, node, level=0):
-        """
-        Recursively prints the solution tree in a readable format.
-        """
-        lines = self.get_solution_structure(node, level)
-        for line in lines:
-            print(line)
+        print(self.solution_structure)
 
 # ==========================================
 #  USER CONFIGURATION SECTION (EDIT HERE)

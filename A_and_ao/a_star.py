@@ -1,44 +1,68 @@
-import heapq
+import subprocess
+import sys
+import ast
+import os
 
 class AStarSearch:
     def __init__(self, graph, heuristics):
         self.graph = graph
         self.heuristics = heuristics
 
-    def get_neighbors(self, node):
-        return self.graph.get(node, [])
-
-    def get_heuristic(self, node):
-        return self.heuristics.get(node, 1000) # Default high value if unknown
-
     def algorithm(self, start, goal):
-        # Ensure goal heuristic is 0 (Critical for A*)
-        self.heuristics[goal] = 0 
+        # 1. Generate Prolog Facts
+        prolog_code = ":- dynamic edge/3, h/2.\n"
         
-        # Priority Queue stores tuples: (f_cost, g_cost, current_node, path)
-        open_list = [(0 + self.get_heuristic(start), 0, start, [start])]
-        closed_set = set()
-
-        while open_list:
-            # Pop the node with the lowest f_cost
-            f, g, current, path = heapq.heappop(open_list)
-
-            if current == goal:
-                return path, g  # Return path and total cost
-
-            if current in closed_set:
-                continue
+        # Convert Graph to Prolog Facts
+        for node, neighbors in self.graph.items():
+            for neighbor, cost in neighbors:
+                # Escape strings to handle spaces/special chars
+                prolog_code += f"edge('{node}', '{neighbor}', {cost}).\n"
+        
+        # Convert Heuristics
+        for node, h_val in self.heuristics.items():
+            prolog_code += f"h('{node}', {h_val}).\n"
             
-            closed_set.add(current)
-
-            for neighbor, weight in self.get_neighbors(current):
-                if neighbor not in closed_set:
-                    new_g = g + weight
-                    new_f = new_g + self.get_heuristic(neighbor)
-                    new_path = path + [neighbor]
-                    heapq.heappush(open_list, (new_f, new_g, neighbor, new_path))
+        # 2. Include Solver and Define Goal
+        # We use absolute path to ensure Prolog finds the solver
+        solver_path = os.path.abspath("astar_solver.pl").replace("\\", "/")
+        prolog_code += f":- consult('{solver_path}').\n"
+        prolog_code += f"run :- solve_astar('{start}', '{goal}').\n"
         
-        return None, float('inf')
+        # 3. Write to temp file
+        temp_file = "temp_astar.pl"
+        with open(temp_file, "w") as f:
+            f.write(prolog_code)
+            
+        # 4. Run SWI-Prolog
+        try:
+            # Command: swipl -s temp_astar.pl -g run -t halt
+            result = subprocess.run(
+                ["swipl", "-s", temp_file, "-g", "run", "-t", "halt"],
+                capture_output=True, text=True
+            )
+            
+            output = result.stdout
+            # Parse "RESULT:['a','b']:10"
+            if "RESULT:" in output:
+                res_str = output.split("RESULT:")[1].strip()
+                path_str, cost_str = res_str.split(":")
+                
+                # Convert string representation to Python objects
+                path = ast.literal_eval(path_str)
+                cost = float(cost_str)
+                return path, cost
+            else:
+                print("Prolog Output:", output)
+                print("Prolog Error:", result.stderr)
+                return None, float('inf')
+                
+        except FileNotFoundError:
+            print("❌ Error: 'swipl' (SWI-Prolog) is not installed or not in PATH.")
+            print("Please install SWI-Prolog to run this logic.")
+            return None, float('inf')
+        except Exception as e:
+            print(f"Error running Prolog: {e}")
+            return None, float('inf')
 
 # ==========================================
 #  USER CONFIGURATION SECTION (EDIT HERE)
